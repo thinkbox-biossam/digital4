@@ -31,6 +31,10 @@
             font-weight: 700;
             animation: text-flicker 3s linear infinite;
         }
+        .header .instructions {
+            color: #ffd700;
+            animation: text-flicker 2s linear infinite;
+        }
         .scanline {
             position: fixed;
             top: 0;
@@ -50,24 +54,27 @@
         }
         .ip-item {
             display: flex;
-            flex-wrap: wrap; /* Allow wrapping on small screens */
+            flex-wrap: wrap;
             justify-content: space-between;
             margin-bottom: 0.5rem;
             opacity: 0;
             animation: fadeIn 0.5s forwards;
-            font-size: 0.8rem; /* Mobile-first font size */
+            font-size: 0.8rem;
+            cursor: pointer;
+            border-radius: 4px;
+            padding: 0.25rem;
+            transition: background-color 0.3s;
         }
-        .ip-item .location {
-            width: 100%; /* Full width on mobile */
+        .ip-item:hover {
+            background-color: rgba(0, 255, 0, 0.1);
         }
-        .ip-item .ip-address {
-            width: 55%;
+        .ip-item.flash-blue {
+            animation: flash-blue-anim 1s ease-out;
         }
-        .ip-item .status {
-            width: 45%;
-            font-weight: 700;
-            text-align: right;
-        }
+        .ip-item .location { width: 100%; }
+        .ip-item .ip-address { width: 55%; }
+        .ip-item .status { width: 45%; font-weight: 700; text-align: right; }
+        
         #prompt-text {
             position: fixed;
             bottom: 1rem;
@@ -81,21 +88,21 @@
             z-index: 5;
             text-align: center;
             opacity: 0;
-            animation: fadeIn 2s 1s forwards;
+            visibility: hidden;
+            transition: opacity 1.5s ease-in-out;
+        }
+        #prompt-text.is-visible {
+            opacity: 1;
+            visibility: visible;
         }
         
         .status-online { color: #00ff00; }
         .status-offline { color: #888888; }
         .status-unstable { color: #ffd700; animation: text-flicker 1.5s linear infinite; }
-        .status-compromised { color: #ff0000; animation: text-flicker 0.5s linear infinite; }
         .status-loggedin { color: #00ffff; animation: text-flicker 0.8s linear infinite; }
 
-        /* Larger screens */
         @media (min-width: 640px) {
-            .ip-item {
-                font-size: 1rem;
-                flex-wrap: nowrap;
-            }
+            .ip-item { font-size: 1rem; flex-wrap: nowrap; }
             .ip-item .location { width: 40%; }
             .ip-item .ip-address { width: 35%; }
             .ip-item .status { width: 25%; text-align: left; }
@@ -104,17 +111,13 @@
             #prompt-text { font-size: 1rem; }
         }
 
-        @keyframes scan {
-            0% { top: -5px; }
-            100% { top: 100vh; }
-        }
-        @keyframes text-flicker {
-            0% { opacity: 1; }
-            50% { opacity: 0.7; }
-            100% { opacity: 1; }
-        }
-        @keyframes fadeIn {
-            to { opacity: 1; }
+        @keyframes scan { 0% { top: -5px; } 100% { top: 100vh; } }
+        @keyframes text-flicker { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+        @keyframes fadeIn { to { opacity: 1; } }
+        @keyframes flash-blue-anim {
+            0% { background-color: rgba(0, 0, 0, 0); }
+            50% { background-color: rgba(0, 255, 255, 0.5); }
+            100% { background-color: rgba(0, 0, 0, 0); }
         }
     </style>
 </head>
@@ -123,17 +126,16 @@
     <div id="container">
         <div class="header">
             <h1>HWABONG_MS_NETWORK_ACCESS</h1>
-            <p>> Accessing internal IP list...</p>
+            <p class="instructions">> 올바른 위치를 찾아 터치하십시오.</p>
         </div>
-        <div class="ip-list-container" id="ip-list">
-            <!-- IP items will be injected here -->
-        </div>
+        <div class="ip-list-container" id="ip-list"></div>
     </div>
-    <div id="prompt-text" style="display: none;">옥상 자물쇠의 비밀번호는 [4444]일 것이다.</div>
+    <div id="prompt-text">옥상 자물쇠의 비밀번호는 [4444]일 것이다.</div>
 
     <script>
         const ipListContainer = document.getElementById('ip-list');
         const promptText = document.getElementById('prompt-text');
+
         const ipData = [
             { location: 'MAIN_SERVER (전산실)', ip: '211.48.0.1', status: 'ONLINE', statusClass: 'status-online' },
             { location: 'TEACHERS_OFFICE-A (교무실)', ip: '211.48.0.2', status: 'ONLINE', statusClass: 'status-online' },
@@ -156,31 +158,43 @@
             { location: 'GYM (체육관)', ip: '211.48.0.45', status: 'OFFLINE', statusClass: 'status-offline' },
         ];
 
-        let delay = 100;
-        ipData.forEach((item, index) => {
-            setTimeout(() => {
-                const ipItem = document.createElement('div');
-                ipItem.className = 'ip-item';
-                ipItem.style.animationDelay = `${delay}ms`;
-                
-                ipItem.innerHTML = `
-                    <span class="location">${item.location}</span>
-                    <span class="ip-address">${item.ip}</span>
-                    <span class="status ${item.statusClass}">${item.status}</span>
-                `;
-                
-                ipListContainer.appendChild(ipItem);
-                ipListContainer.scrollTop = ipListContainer.scrollHeight;
+        function initializeList() {
+            let delay = 100;
+            ipData.forEach((item, index) => {
+                setTimeout(() => {
+                    const ipItem = document.createElement('div');
+                    ipItem.className = 'ip-item';
+                    ipItem.dataset.ip = item.ip;
+                    
+                    ipItem.innerHTML = `
+                        <span class="location">${item.location}</span>
+                        <span class="ip-address">${item.ip}</span>
+                        <span class="status ${item.statusClass}">${item.status}</span>
+                    `;
+                    
+                    ipItem.addEventListener('click', () => handleItemClick(ipItem));
+                    ipListContainer.appendChild(ipItem);
+                    ipListContainer.scrollTop = ipListContainer.scrollHeight;
+                }, delay);
+                delay += 150;
+            });
+        }
 
-                // Show prompt after the last item is rendered
-                if (index === ipData.length - 1) {
-                    setTimeout(() => {
-                        promptText.style.display = 'block';
-                    }, 500);
-                }
-            }, delay);
-            delay += 150;
-        });
+        function handleItemClick(element) {
+            const clickedIp = element.dataset.ip;
+            if (clickedIp === '211.48.0.15') {
+                element.classList.add('flash-blue');
+                promptText.classList.add('is-visible');
+                // Optional: Remove the flash animation class after it finishes
+                setTimeout(() => {
+                    element.classList.remove('flash-blue');
+                }, 1000);
+            }
+        }
+        
+        window.onload = () => {
+            initializeList();
+        };
 
     </script>
 </body>
