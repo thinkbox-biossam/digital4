@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NETWORK_ADMIN_PAGE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nanum+Gothic+Coding:wght@400;700&display=swap');
+        body {
+            font-family: 'Nanum Gothic Coding', monospace;
+            background-color: #010409;
+            color: #00ff00;
+            overflow: hidden;
+        }
+        #container {
+            width: 100%;
+            height: 100vh;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            text-shadow: 0 0 5px #00ff00;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #00ff00;
+            padding-bottom: 0.5rem;
+        }
+        .header h1 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            animation: text-flicker 3s linear infinite;
+        }
+        .scanline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: rgba(0, 255, 0, 0.2);
+            animation: scan 4s linear infinite;
+            z-index: 10;
+        }
+        .ip-list-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            border: 1px solid #00ff00;
+            padding: 1rem;
+            background: rgba(0, 20, 0, 0.2);
+        }
+        .ip-item {
+            display: flex;
+            flex-wrap: wrap; /* Allow wrapping on small screens */
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            opacity: 0;
+            animation: fadeIn 0.5s forwards;
+            font-size: 0.8rem; /* Mobile-first font size */
+        }
+        .ip-item .location {
+            width: 100%; /* Full width on mobile */
+        }
+        .ip-item .ip-address {
+            width: 55%;
+        }
+        .ip-item .status {
+            width: 45%;
+            font-weight: 700;
+            text-align: right;
+        }
+        #prompt-text {
+            position: fixed;
+            bottom: 1rem;
+            left: 50%;
+            width: 90%;
+            transform: translateX(-50%);
+            color: #ffd700;
+            font-size: 0.9rem;
+            font-weight: bold;
+            text-shadow: 0 0 8px #ffd700;
+            z-index: 5;
+            text-align: center;
+            opacity: 0;
+            animation: fadeIn 2s 1s forwards;
+        }
+        
+        .status-online { color: #00ff00; }
+        .status-offline { color: #888888; }
+        .status-unstable { color: #ffd700; animation: text-flicker 1.5s linear infinite; }
+        .status-compromised { color: #ff0000; animation: text-flicker 0.5s linear infinite; }
+        .status-loggedin { color: #00ffff; animation: text-flicker 0.8s linear infinite; }
+
+        /* Larger screens */
+        @media (min-width: 640px) {
+            .ip-item {
+                font-size: 1rem;
+                flex-wrap: nowrap;
+            }
+            .ip-item .location { width: 40%; }
+            .ip-item .ip-address { width: 35%; }
+            .ip-item .status { width: 25%; text-align: left; }
+            #container { padding: 2rem; }
+            .header h1 { font-size: 1.5rem; }
+            #prompt-text { font-size: 1rem; }
+        }
+
+        @keyframes scan {
+            0% { top: -5px; }
+            100% { top: 100vh; }
+        }
+        @keyframes text-flicker {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="scanline"></div>
+    <div id="container">
+        <div class="header">
+            <h1>HWABONG_MS_NETWORK_ACCESS</h1>
+            <p>> Accessing internal IP list...</p>
+        </div>
+        <div class="ip-list-container" id="ip-list">
+            <!-- IP items will be injected here -->
+        </div>
+    </div>
+    <div id="prompt-text" style="display: none;">옥상 자물쇠의 비밀번호는 [4444]일 것이다.</div>
+
+    <script>
+        const ipListContainer = document.getElementById('ip-list');
+        const promptText = document.getElementById('prompt-text');
+        const ipData = [
+            { location: 'MAIN_SERVER (전산실)', ip: '211.48.0.1', status: 'ONLINE', statusClass: 'status-online' },
+            { location: 'TEACHERS_OFFICE-A (교무실)', ip: '211.48.0.2', status: 'ONLINE', statusClass: 'status-online' },
+            { location: 'TEACHERS_OFFICE-B (교무실)', ip: '211.48.0.3', status: 'ONLINE', statusClass: 'status-online' },
+            { location: 'LIBRARY (도서관)', ip: '211.48.0.5', status: 'OFFLINE', statusClass: 'status-offline' },
+            { location: 'BROADCASTING_ROOM (방송실)', ip: '211.48.0.7', status: 'ONLINE', statusClass: 'status-online' },
+            { location: 'CLASS_1-1 (1학년 1반)', ip: '211.48.0.10', status: 'UNSTABLE', statusClass: 'status-unstable' },
+            { location: 'CLASS_1-2 (1학년 2반)', ip: '211.48.0.11', status: 'ONLINE', statusClass: 'status-online' },
+            { location: 'CLASS_1-3 (1학년 3반)', ip: '211.48.0.12', status: 'ONLINE', statusClass: 'status-online' },
+            { location: 'CLASS_1-4 (1학년 4반)', ip: '211.48.0.13', status: 'ONLINE', statusClass: 'status-online' },
+            { location: 'ROOFTOP_CCTV (옥상)', ip: '211.48.0.15', status: 'LOGGED_IN: SH', statusClass: 'status-loggedin' },
+            { location: 'CLASS_2-1 (2학년 1반)', ip: '211.48.0.20', status: 'ONLINE', statusClass: 'status-online' },
+            { location: 'CLASS_2-2 (2학년 2반)', ip: '211.48.0.21', status: 'OFFLINE', statusClass: 'status-offline' },
+            { location: 'CLASS_2-3 (2학년 3반)', ip: '211.48.0.22', status: 'ONLINE', statusClass: 'status-online' },
+            { location: 'CLASS_2-4 (2학년 4반)', ip: '211.48.0.23', status: 'OFFLINE', statusClass: 'status-offline' },
+            { location: 'CLASS_3-1 (3학년 1반)', ip: '211.48.0.30', status: 'ONLINE', statusClass: 'status-online' },
+            { location: 'CLASS_3-2 (3학년 2반)', ip: '211.48.0.31', status: 'UNSTABLE', statusClass: 'status-unstable' },
+            { location: 'CLASS_3-3 (3학년 3반)', ip: '211.48.0.32', status: 'ONLINE', statusClass: 'status-online' },
+            { location: 'CLASS_3-4 (3학년 4반)', ip: '211.48.0.33', status: 'ONLINE', statusClass: 'status-online' },
+            { location: 'GYM (체육관)', ip: '211.48.0.45', status: 'OFFLINE', statusClass: 'status-offline' },
+        ];
+
+        let delay = 100;
+        ipData.forEach((item, index) => {
+            setTimeout(() => {
+                const ipItem = document.createElement('div');
+                ipItem.className = 'ip-item';
+                ipItem.style.animationDelay = `${delay}ms`;
+                
+                ipItem.innerHTML = `
+                    <span class="location">${item.location}</span>
+                    <span class="ip-address">${item.ip}</span>
+                    <span class="status ${item.statusClass}">${item.status}</span>
+                `;
+                
+                ipListContainer.appendChild(ipItem);
+                ipListContainer.scrollTop = ipListContainer.scrollHeight;
+
+                // Show prompt after the last item is rendered
+                if (index === ipData.length - 1) {
+                    setTimeout(() => {
+                        promptText.style.display = 'block';
+                    }, 500);
+                }
+            }, delay);
+            delay += 150;
+        });
+
+    </script>
+</body>
+</html>
